@@ -1,0 +1,41 @@
+name: Build PHP82 AUR Package
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y arch-install-scripts git base-devel
+
+      - name: Set up Arch Linux chroot environment
+        run: |
+          sudo mkdir -p /opt/arch-root
+          sudo pacstrap -c /opt/arch-root base base-devel --noconfirm
+          sudo arch-chroot /opt/arch-root pacman -Syu --noconfirm
+
+      - name: Copy PKGBUILD to Arch chroot
+        run: |
+          sudo mkdir -p /opt/arch-root/build
+          sudo cp -r . /opt/arch-root/build
+
+      - name: Build the PHP82 package
+        run: |
+          sudo arch-chroot /opt/arch-root /bin/bash -c "cd /build && makepkg -s --noconfirm"
+
+      - name: Upload built packages as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: php82-packages
+          path: /opt/arch-root/build/*.pkg.tar.zst
